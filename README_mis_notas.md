@@ -44,3 +44,23 @@ La directiva `routerLinkActive` permite determinar clases de estilo a aplicar cu
 <a class="menu-item" mat-button routerLink="/about" routerLinkActive="menu-item-active">...</a>
 <a class="menu-item" mat-button routerLink="/login" routerLinkActive="menu-item-active">...</a>
 ```
+
+## Setup del lazy loading con Angular Router
+
+En el proyecto tengo el módulo `CoursesModule` que comprende una serie de componentes dedicados, definido en el fichero `./courses/courses.module.ts`.
+
+Este módulo, `CoursesModule`, será cargado lazily. 
+
+Tengo que definirle en el módulo de routing, `app-routing.module.ts` que las rutas `courses/*` corresponden a este módulo. Lo hago en el objeto `Routes` donde tengo definidas las rutas.
+
+Importo dinámicamente el módulo `CoursesModule` empleando la palabra de Javascript estándar `import`, que me devuelve una `Promise`.
+
+```javascript 
+const routes: Routes = [
+  { path: "courses", loadChildren: () => import('./courses/courses.module').then(m => m.CoursesModule) },
+  { path: "login", component: LoginComponent },
+  { path: "about", component: AboutComponent },
+];
+```
+
+
