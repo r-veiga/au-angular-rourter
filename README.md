@@ -1,3 +1,6 @@
+## Échale un ojo a [mis notas sobre este curso de Angular Router](./README_mis_notas.md)
+
+![Angular Router In Depth](https://angular-university.s3-us-west-1.amazonaws.com/course-images/angular-router-course.jpg)
 
 ## The Angular Router In Depth Course
 
@@ -5,7 +8,6 @@ This repository contains the code of the course [Angular Router In Depth](https:
 
 This course repository is updated to Angular v14.
 
-![Angular Router In Depth](https://angular-university.s3-us-west-1.amazonaws.com/course-images/angular-router-course.jpg)
 
 
 # Installation pre-requisites
