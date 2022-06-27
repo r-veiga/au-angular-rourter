@@ -66,7 +66,7 @@ const routes: Routes = [
 Similar al módulo principal `AppModule`, el módulo `CoursesModule` contiene **su propio módulo de routing** que aísla la configuración de routing.
 Este módulo se llama `CoursesRoutingModule`.
 
-En el `import` de `CoursesRoutingModule` debo indicar que se trata de un módulo hijo y no del módulo principal.Uso la palabra `forChild` que indica que es un módulo hijo, que puede ser cargado indistintamente lazy o no.
+En el `import` de `CoursesRoutingModule` debo indicar que se trata de un módulo hijo (con sus rutas hijas) y no del módulo principal. Uso la palabra `forChild` que indica que es un módulo hijo, que puede ser cargado indistintamente lazy o no.
 
 ```javascript 
 @NgModule({
