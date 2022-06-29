@@ -69,12 +69,39 @@ Este módulo se llama `CoursesRoutingModule`.
 En el `import` de `CoursesRoutingModule` debo indicar que se trata de un módulo hijo (con sus rutas hijas) y no del módulo principal. Uso la palabra `forChild` que indica que es un módulo hijo, que puede ser cargado indistintamente lazy o no.
 
 ```javascript 
+const routes: Routes = [
+  { path: "", component: HomeComponent }, 
+  { path: ":courseUrl", component: CourseComponent }, 
+];
+
 @NgModule({
     imports: [ RouterModule.forChild(routes) ], 
     exports: [ RouterModule ], 
     . . . 
 })
 ```
+
+A su vez tengo también un objeto Routes propio de este módulo de routing, donde debo destacar dos cosas:
+* el path es "", pero es `forChild` así que en realidad tiene la ruta base `/courses` tal y como se le ha asociado al `CoursesRoutingModule` en el fichero de routing padre de la aplicación
+* estoy definiendo una variable `:courseUrl` de path router
+
+La variable la voy a emplear en el template de las cards que mostrarán los cursos disponibles al usuario.
+La URL del curso es un valor dinámico que cambiará en cada card y se asocia al botón "VIEW COURSE". En `routerLink` hago un binding, en vez de asociar un valor constante como hasta ahora.
+
+```html
+<mat-card *ngFor="let course of courses"...>
+    . . .
+    <mat-card-header>...{{course.description}}...</>
+    <img mat-card-image [src]="course.iconUrl">
+    <mat-card-content> <p>{{course.longDescription}}</p> </mat-card-content>
+
+    <mat-card-actions class="course-actions">
+        <button [routerLink]="[course.url]...>VIEW COURSE</button>
+        <button mat-button class="mat-raised-button mat-accent" (click)="editCourse(course)"> EDIT </button>
+    </mat-card-actions>
+</mat-card>
+```
+
 
 
 
