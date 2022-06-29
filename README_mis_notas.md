@@ -47,13 +47,12 @@ La directiva `routerLinkActive` permite determinar clases de estilo a aplicar cu
 
 ## Setup del lazy loading con Angular Router
 
-En el proyecto tengo el módulo `CoursesModule` que comprende una serie de componentes dedicados, definido en el fichero `./courses/courses.module.ts`.
+En el proyecto tengo el módulo `CoursesModule` definido en el fichero `./courses/courses.module.ts` y que comprende una serie de componentes dedicados.
 
-Este módulo, `CoursesModule`, será cargado lazily. 
+Este módulo, `CoursesModule`, será "lazy loaded". 
 
-Tengo que definirle en el módulo de routing, `app-routing.module.ts` que las rutas `courses/*` corresponden a este módulo. Lo hago en el objeto `Routes` donde tengo definidas las rutas.
-
-Importo dinámicamente el módulo `CoursesModule` empleando la palabra de Javascript estándar `import`, que me devuelve una `Promise`.
+En el módulo de routing padre `AppModuleRouting` defino la url `/courses` como entrada al módulo `CoursesModule`.
+La palabra de Javascript estándar `import` como comando para importar dinámicamente el módulo `CoursesModule` que devuelve una `Promise`, así que usaré la palabra `then()`.
 
 ```javascript 
 const routes: Routes = [
@@ -63,22 +62,26 @@ const routes: Routes = [
 ];
 ```
 
-Similar al módulo principal `AppModule`, el módulo `CoursesModule` contiene **su propio módulo de routing** que aísla la configuración de routing.
-Este módulo se llama `CoursesRoutingModule`.
+Este módulo, `CoursesModule`, será "lazy loaded". Importa el módulo de routing `CoursesModuleRouting`.
 
-En el `import` de `CoursesRoutingModule` debo indicar que se trata de un módulo hijo (con sus rutas hijas) y no del módulo principal. Uso la palabra `forChild` que indica que es un módulo hijo, que puede ser cargado indistintamente lazy o no.
+El módulo hijo `CoursesModule`, similar al módulo principal de la aplicación `AppModule` separa el routing, el uso de `RouterModule`, 
+* en el módulo principal `RouterModule.forRoot(...)` 
+* en el módulo hijo `RouterModule.forChildren(...)`
+
+
+Similar al módulo principal `AppModule`, el módulo `CoursesModule` contiene **su propio módulo de routing** que aísla la configuración de routing y en él defino un objeto de tipo `Routes` que es un array de rutas, las rutas `courses/**`. 
+Este módulo se llama `CoursesRoutingModule`.
 
 ```javascript 
 const routes: Routes = [
   { path: "", component: HomeComponent }, 
-  { path: ":courseUrl", component: CourseComponent }, 
 ];
 
 @NgModule({
-    imports: [ RouterModule.forChild(routes) ], 
-    exports: [ RouterModule ], 
-    . . . 
+  imports: [ RouterModule.forChild(routes) ],
+  exports: [ RouterModule ],
 })
+export class CoursesRoutingModule {
 ```
 
 A su vez tengo también un objeto Routes propio de este módulo de routing, donde debo destacar dos cosas:
@@ -86,22 +89,121 @@ A su vez tengo también un objeto Routes propio de este módulo de routing, dond
 * estoy definiendo una variable `:courseUrl` de path router
 
 La variable la voy a emplear en el template de las cards que mostrarán los cursos disponibles al usuario.
-La URL del curso es un valor dinámico que cambiará en cada card y se asocia al botón "VIEW COURSE". En `routerLink` hago un binding, en vez de asociar un valor constante como hasta ahora.
+La URL del curso es un valor dinámico que cambiará en cada card y se asocia al botón "VIEW COURSE". En `routerLink` hago un binding de input con corchetes porque es dinámico.  
 
 ```html
 <mat-card *ngFor="let course of courses"...>
-    . . .
     <mat-card-header>...{{course.description}}...</>
     <img mat-card-image [src]="course.iconUrl">
     <mat-card-content> <p>{{course.longDescription}}</p> </mat-card-content>
 
     <mat-card-actions class="course-actions">
         <button [routerLink]="[course.url]...>VIEW COURSE</button>
-        <button mat-button class="mat-raised-button mat-accent" (click)="editCourse(course)"> EDIT </button>
+        <button mat-button class="mat-raised-button mat-accent" (click)="editCourse(course)">EDIT</button>
     </mat-card-actions>
 </mat-card>
 ```
 
+El curso a mostrar al usuario dependerá de la URL (del contenido de la variable) `/courses/:courseUrl`.
+
+Añado este caso de rutas en el objeto `Routes`: 
+
+```javascript 
+const routes: Routes = [
+  { path: "", component: HomeComponent }, 
+  { path: ":courseUrl", component: CourseComponent }, 
+];
+```
+
+Veamos ahora cómo gestionar esta navegación en el componente asociado `CourseComponent`.
+
+```typescript
+@Component({
+    selector: 'course',
+    templateUrl: './course.component.html',
+    styleUrls: ['./course.component.css']
+})
+export class CourseComponent implements OnInit {
+    course: Course;
+    couponCode: string;
+
+    constructor() { }
+}
+``` 
+
+La solución más sencilla sería inyectar un cliente Http en la clase `CourseComponent` y traerse la información del curso.
+Sin embargo, un Router Resolver me ofrece unas cuantas ventajas.
+
+Un **Router Resolver** es un servicio especial de routing dedicado a recoger, durante una navegación de ruta, todos los datos que el componente necesita.  
+El Router Resolver pasa los datos al componente, resolviendo un par de problemas:
+* si hay un problema y no se puede recuperar los datos, entonces la transición de navegación no se completa y nos quedamos en la pantalla original. Podríamos mostrar un mensaje de error, así no se muestra al usuario una pantalla vacía. 
+* no muestra el componente hasta que los datos estén completos, así evitamos una presentación a tirones (vacía/llena).
+
+En la carpeta `/service` crearé un nuevo servicio `CourseResolver` que implementa el interfaz `Resolve` con un método a implementar `resolve(...)`.
+
+En el constructor de `CourseResolver` inyecto el servicio `CoursesService` que lee los datos del backend => un DAO, hablando en plata.
+
+```javascript
+@Injectable()
+export class CourseResolver implements Resolve<Course> {
+
+    constructor(private courses: CoursesService) { }
+
+    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<Course> {
+        const course = extractCourseFromURL(route);
+        return this.courses.loadCourseByUrl(course);
+        // el Resolver necesita que la emisión se complete, puedo protegerme así: 
+        // return this.courses.loadCourseByUrl(course).pipe(first());
+    }
+
+    private extractCourseFromURL(route: ActivatedRouteSnapshot) {
+      return route.paramMap.get("courseUrl");
+    }
+}
+```
+
+De una ruta como `localhost:4200/courses/angular-router-course`, necesito extraer el parámetro para luego pasárselo a mi método del DAO.
+
+`CourseResolver` obliga unos cambios en el módulo de routing: 
+
+```javascript 
+const routes: Routes = [
+  { path: "", component: HomeComponent }, 
+  { path: ":courseUrl", component: CourseComponent, resolve: { course: CourseResolver } }, 
+];
+
+@NgModule({
+  imports:    [ RouterModule.forChild(routes) ],
+  exports:    [ RouterModule ],
+  providers:  [ CourseResolver ],
+})
+export class CoursesRoutingModule {
+```
+
+La ruta indica que antes de mostrar el `CourseComponent` se debe cargar su propiedad `course` con lo que me devuelva el `CourseResolver` (en el método `resolve`). 
+Potencialmente, el componente podría definir varias propiedades a resolver, cada una con su propio resolver.
+
+De esta simple manera he enlazado el componente con el resolver. 
+
+Cuando se muestre el componente los datos habrán sido recuperados del backend y estarán disponibles a nivel del Router. Ahora es necesario que el componente acceda a los datos, para eso se inyecta en el constructor del componente un inyectable específico de routing, `ActivatedRoute`. De su propiedad `snapshot` puedo extraer los datos del curso obtenidos por el resolver. 
+
+```typescript 
+export class CourseComponent implements OnInit {
+    course: Course;
+    couponCode: string;
+
+    constructor(private route: ActivatedRoute) { }
+    
+    ngOnInit() {
+        this.course = this.route.snapshot.data['course'];
+    }
+}
+```
+
+
+A continuación mostraré un spinner si ocurre que:
+* se está cargando un módulo de tipo lazy-loading 
+* está ejecutándose un Router Resolver y esperando a que los datos estén disponibles
 
 
 
