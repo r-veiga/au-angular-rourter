@@ -1,3 +1,7 @@
+# Mis notas (1) sobre este curso de Angular Router
+
+### Continúa en [mis notas (2) sobre este curso de Angular Router](./README_mis_notas_2.md)
+
 ## Dos proyectos
 Este curso sobre Angular Router tiene dos proyectos como punto de inicio: 
 1. Un proyecto Angular (frontend)
@@ -193,17 +197,106 @@ export class CourseComponent implements OnInit {
     couponCode: string;
 
     constructor(private route: ActivatedRoute) { }
-    
+
     ngOnInit() {
         this.course = this.route.snapshot.data['course'];
     }
 }
 ```
 
-
-A continuación mostraré un spinner si ocurre que:
+A continuación mostraré un spinner durante las transiciones de routing, si ocurre que:
 * se está cargando un módulo de tipo lazy-loading 
 * está ejecutándose un Router Resolver y esperando a que los datos estén disponibles
 
+En el componente principal `app.component.html`, donde tengo el `<router-outlet>`, tendré también otro componente `<loading>` que será el spinner.
 
+```html
+  . . . 
+  </mat-toolbar>
+  <messages></messages>
+  <loading></loading>
+  <router-outlet></router-outlet>
+</mat-sidenav-container>
+```
 
+Usaré un spinner de Material dentro de mi componente custom Angular que voy a crear y al que se le inyecta un servicio `LoadingService` que monitoriza determinadas acciones del router.  
+
+```typescript 
+@Component({
+  selector: 'loading',
+  templateUrl: './loading.component.html',
+  styleUrls: ['./loading.component.css']
+})
+export class LoadingComponent implements OnInit {
+  @Input() routing: boolean = false; 
+  constructor(public loadingService: LoadingService) { } 
+  ngOnInit() { } 
+}
+```
+
+El componente aún no está integrado con el routing. 
+El spinner se visualiza meramente si es "true" el valor emitido en el observable `loading$` del servicio `LoadingService`.
+
+```html 
+<div class="spinner-container" *ngIf="loadingService.loading$ | async">
+    <mat-spinner></mat-spinner>
+</div>
+```
+
+Voy a hacer que el spinner se integre con el routing.
+Habilitaré que se monitorice con el servicio si hay una transacción de routing en marcha.
+
+```html
+  . . . 
+  <loading [detectRoutingOngoing]="true"></loading>
+  <router-outlet></router-outlet>
+  . . . 
+```
+
+Para monitorizar el routing, lo primero que necesito es inyectar el Router. 
+
+```typescript 
+@Component({
+  selector: 'loading',
+  templateUrl: './loading.component.html',
+  styleUrls: ['./loading.component.css']
+})
+export class LoadingComponent implements OnInit {
+  @Input() routing: boolean = false; 
+  @Input() detectRoutingOngoing = false;
+
+  constructor(public loadingService: , private router: Router ) { }  
+
+  ngOnInit() { 
+    if (this.detectRoutingOngoing) {
+      this.router.events.subscribe(event => {
+        if (event instanceof NavigationStart || 
+            event instanceOf Route) {
+          this.loadingService.loadingOn();
+        }
+        else if ( event instanceof NavigationEnd    || 
+                  event instanceof NavigationError  || 
+                  event instanceof NavigationCancel   ) {
+          this.loadingService.loadingOff();
+        }
+      });
+    }
+  } 
+}
+```
+
+Por último, quiero que también se muestre un spinner durante el "lazy loading" de un módulo, así que tendré que detectar eso también. 
+En particular, cuando se carga el módulo de cursos, que es el único "lazy loading" definido en este proyecto.
+
+```typescript
+  ngOnInit() {
+    if (this.detectRoutingOngoing) {
+      this.router.events.subscribe(event => { 
+        if (... || event instanceof RouteConfigLoadStart ) {
+          this.loadingService.loadingOn();
+        }
+        else if (... || event instanceof RouteConfigLoadEnd  ) {
+          this.loadingService.loadingOff();
+        }
+  }); } }
+  ```

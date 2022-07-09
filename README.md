@@ -1,4 +1,4 @@
-## Échale un ojo a [mis notas sobre este curso de Angular Router](./README_mis_notas.md)
+## Échale un ojo a [mis notas (1) sobre este curso de Angular Router](./README_mis_notas_1.md)
 
 ![Angular Router In Depth](https://angular-university.s3-us-west-1.amazonaws.com/course-images/angular-router-course.jpg)
 
