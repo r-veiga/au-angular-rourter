@@ -16,6 +16,14 @@ Ahora voy a ver cómo trabajar con rutas hijo (child routes). En las rutas del m
             .then(m => m.CoursesModule)
 }
 ```
+## Resolver 
+Dejo un punto escrito sobre los *Routing Resolvers* porque serán empleados durante el uso de las rutas hijo. 
+
+Para mi uso, un *Resolver* es una propiedad que guarda el Router y a la que puedo acceder. 
+
+Esta propiedad será cargada automáticamente mediante un servicio que extiende el interfaz `Resolve` cuando se active una ruta configurada para ser resuelta.
+
+El servicio que carga el valor en la propiedad es lanzado por el cambio de ruta y hace su proceso para obtener el valor a devolver, p.ej. PODRÍA hacer una llamada REST a mi backend.
 
 ## Child routes
 
@@ -56,5 +64,74 @@ ya que en las rutas he incluido `children:` en el elemento `CourseComponent`.
 </ng-container>
 ```
 
+Después de configurar las rutas hijo voy a dedicarme al componente LessonsListComponent. 
+
+Veo que su elemento principal es un array de elementos `LessonSummary`.
+Reseñaré que dentro de la carpeta del módulo `courses` tengo subcarpetas por cada componente del módulo y además dos subcarpetas llamadas `model` y `services` que me ayudan a ordenar el contenido.
+En la carpeta `model` guardo las descripciones de los interfaces que uso en el módulo.
+
+```javascript
+export class LessonsListComponent implements OnInit {
+    lessons:LessonSummary[];
+    constructor(private route:ActivatedRoute) { }
+    ngOnInit() { 
+        this.lessons = this.route.snapshot.data["lessons"];     
+    }
+}
+
+export interface LessonSummary {
+    id: number;
+    description: string;
+    duration: string;
+    seqNo: number;
+    courseId: number;
+}
+```
+
+Se observa en el método `ngOnInit` que el valor de `this.lessons` se extrae del router. 
+Esto me dice que el router obtiene el valor desde el backend mediante el uso de un *Resolver*, que se encarga de poblar la propiedad `lessons`.
+
+Y deberé entonces crear un *Resolver* y conectarlo a mi componente.
+
+Crearé el Resolver `./src/app/courses/services/lesson.resolver.ts` y configuraré el módulo de routing para que la propiedad `lessons` sea cargada por el *Resolver* y esté disponible en emil componente para ser extraida con t`his.route.snapshot.data["lessons"]`.
+
+```typescript
+@Injectable()
+export class LessonsResolver implements Resolve<LessonSummary[]> {
+    constructor(private courses: CoursesService) {}
+
+    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<LessonSummary[]> {
+        // extrae el valor del parámetro "courseUrl" de la url activa
+        // llama al servicio de backend con el parámetro recuperado
+        const courseUrl = route.paramMap.get("courseUrl"); 
+        return this.courses.loadAllCourseLessonsSummary(courseUrl);
+    }
+}
+```
+
+```javascript
+const routes: Routes = [
+    . . .  
+    { 
+        path: ":courseUrl", component: CourseComponent, 
+        children: [
+            { 
+                path: "", 
+                component: LessonsListComponent, 
+                resolve: { lessons: LessonsResolver } 
+            },
+        . . .
+
+@NgModule({
+    . . .
+    providers: [
+        ..., LessonsResolver
+    ]
+})
+export class CoursesRoutingModule {}
+```
+
+En este punto he conseguido que además de mostrar un detalle de un curso concreto que el usuario haya elegido, se muestre tambíen un listado de las lecciones que componen el curso. 
+Este listado se ve en el `<router-outlet>` del componente dedicado al curso, `course.component.html`.
 
 
