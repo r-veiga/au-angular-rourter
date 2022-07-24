@@ -2,12 +2,22 @@ import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
 import { CourseComponent } from './course/course.component';
 import { HomeComponent } from './home/home.component';
+import { LessonDetailComponent } from './lesson/lesson-detail.component';
+import { LessonsListComponent } from './lessons-list/lessons-list.component';
 import { CourseResolver } from './services/course.resolver';
 
 
 const routes: Routes = [
-  { path: "", component: HomeComponent }, 
-  { path: ":courseUrl", component: CourseComponent, resolve: { course: CourseResolver } }, 
+  { 
+    path: "", component: HomeComponent 
+  }, 
+  { 
+    path: ":courseUrl", component: CourseComponent, 
+    children: [
+      { path: "", component: LessonsListComponent},
+      { path: "lessons/:lessonSeqNo", component: LessonDetailComponent}
+    ],
+    resolve: { course: CourseResolver } }, 
 ];
 
 @NgModule({
