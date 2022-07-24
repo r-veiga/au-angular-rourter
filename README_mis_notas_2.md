@@ -134,4 +134,39 @@ export class CoursesRoutingModule {}
 En este punto he conseguido que además de mostrar un detalle de un curso concreto que el usuario haya elegido, se muestre tambíen un listado de las lecciones que componen el curso. 
 Este listado se ve en el `<router-outlet>` del componente dedicado al curso, `course.component.html`.
 
+Recordemos que estoy trabajando un escenario de Routing algo más complejo; 
+es un *Master-Detail* con navegación *Detail to Detail*. 
+
+Ahora me dedicaré al componente de detalle. 
+Cómo hacer que `LessonDetailComponent` esté disponible en la ruta `"lessons/:lessonSeqNo"` tal como ya tengo configurado.
+
+```javascript
+    children: [
+      { path: "", component: LessonsListComponent},
+      { path: "lessons/:lessonSeqNo", component: LessonDetailComponent}
+    ],
+```    
+
+Ahora mismo, aunque el componente es accesible si introduzco la ruta en la caja del navegador, todavía no hay otros componentes desde los que pueda llegar al `LessonDetailComponent`.
+
+Para poder navegar desde el componente `LessonsListComponent` al `LessonDetailComponent` introduciré la directiva `routerLink`.
+
+```html
+<table . . . 
+
+  <tr class="lesson-row" 
+      *ngFor="let lesson of lessons"
+      [routerLink]="['lessons', lesson.seqNo]">
+
+    <td class="seqno-cell">{{lesson.seqNo}}</td>
+    <td class="description-cell">{{lesson.description}}</td>
+    <td class="duration-cell">{{lesson.duration}}</td>
+  </tr>
+
+</table>
+```
+
+Dado que ya tengo como sufijo la URL del componente padre, en `routerLink` usaré una ruta relativa. 
+Indico los segementos que voy a añadir: la constante `'lessons'` y el número de la lección es la variable `lesson.seqNo`.
+
 
