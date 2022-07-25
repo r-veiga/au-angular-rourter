@@ -120,6 +120,8 @@ const routes: Routes = [
                 component: LessonsListComponent, 
                 resolve: { lessons: LessonsResolver } 
             },
+            { path: "lessons/:lessonSeqNo", component: LessonDetailComponent}
+        ],
         . . .
 
 @NgModule({
@@ -168,5 +170,67 @@ Para poder navegar desde el componente `LessonsListComponent` al `LessonDetailCo
 
 Dado que ya tengo como sufijo la URL del componente padre, en `routerLink` usaré una ruta relativa. 
 Indico los segementos que voy a añadir: la constante `'lessons'` y el número de la lección es la variable `lesson.seqNo`.
+
+Introducido el enrutamiento al componente, ahora voy a crear la lógica para recuperar la lección seleccionada del curso. 
+
+Necesito crear un *Resolver* para el componente `LessonDetailComponent` que me devuelva un objeto con el detalle de la lección. Entre otras cosas, contendrá el enlace para ver el vídeo de la lección, así que en un futuro querré que esté protegido para los usuarios no premium.
+
+Crearé el resolver `lesson-detail.resolver.ts`. 
+
+👁️👁️ Ojo, que se extraerán dos variables de la URI para ser pasadas al *Resolver* `LessonDetailResolver`, con la particularidad de que una de las variables es del segmento del padre y la otra del hijo, con lo que el método de extracción es ligeramente diferente. 
+* `:courseUrl` - pertenece a la ruta padre `route.parent.paramMap.get(..)`
+* `:lessonSeqNo` - pertenece a la ruta hijo `route.paramMap.get(...)`
+```javascript
+const routes: Routes = [
+  ... 
+  { 
+    path: ":courseUrl", component: CourseComponent, 
+    children: [
+      { 
+        path: "", 
+        component: LessonsListComponent, 
+        resolve: { lessons: LessonsResolver }
+      },
+      { 
+        path: "lessons/:lessonSeqNo", 
+        component: LessonDetailComponent, 
+        resolve: { lesson: LessonDetailResolver }
+      }
+    ],
+    resolve: { course: CourseResolver } }, 
+];
+```
+Por supuesto, en este módulo de routing se incluye a `LessonDetailResolver` dentro del epígrafe `providers:`.
+
+```typescript
+@Injectable()
+export class LessonDetailResolver implements Resolve<LessonDetail> {
+
+    constructor(private courses: CoursesService) {}
+
+    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<LessonDetail> {
+        const courseId = route.parent.paramMap.get("courseUrl"); 
+        const lessonId = route.paramMap.get("lessonSeqNo");
+        return this.courses.loadLessonDetail(courseId, lessonId);
+    }
+}
+```
+
+Y el componente que necesita el *Resolver*, `LessonDetailComponent` queda de modo que su propiedad `lessonSelected` se obtiene del router extrayendo la propiedad `lesson` cargada por el *Resolver*. 
+
+```typescript
+@Component({ . . . })
+export class LessonDetailComponent implements OnInit {
+  lessonSelected: LessonDetail;
+
+  constructor(private route: ActivatedRoute) {
+    console.log("Created LessonDetailComponent...");
+  }
+
+  ngOnInit() {
+    this.lessonSelected = this.route.snapshot.data["lesson"];
+  }
+}
+```
 
 
