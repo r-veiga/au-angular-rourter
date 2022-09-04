@@ -177,10 +177,15 @@ Necesito crear un *Resolver* para el componente `LessonDetailComponent` que me d
 
 Crearé el resolver `lesson-detail.resolver.ts`. 
 
-👁️👁️ Ojo, que se extraerán dos variables de la URI para ser pasadas al *Resolver* `LessonDetailResolver`, con la particularidad de que una de las variables es del segmento del padre y la otra del hijo, con lo que el método de extracción es ligeramente diferente. 
+👁️👁️ Ojo, se extraen **dos** variables de la URI y se pasan al *Resolver* `LessonDetailResolver`. 
+
+👁️👁️ Una variable es del segmento del padre, la otra del hijo. 
+
+👁️👁️ ¡el método de extracción es (ligeramente) diferente!
+
 * `:courseUrl` - pertenece a la ruta padre `route.parent.paramMap.get(..)`
 * `:lessonSeqNo` - pertenece a la ruta hijo `route.paramMap.get(...)`
-```javascript
+```typescript
 const routes: Routes = [
   ... 
   { 
@@ -194,13 +199,24 @@ const routes: Routes = [
       { 
         path: "lessons/:lessonSeqNo", 
         component: LessonDetailComponent, 
-        resolve: { lesson: LessonDetailResolver }
+        resolve: { lessonSelected: LessonDetailResolver }
       }
     ],
     resolve: { course: CourseResolver } }, 
 ];
+
+@NgModule({
+  imports: [ RouterModule.forChild(routes) ],
+  exports: [ RouterModule ],
+  providers: [
+    CourseResolver,
+    LessonDetailResolver, 🔍
+    LessonsResolver, 
+  ]
+})
+export class CoursesRoutingModule {}
 ```
-Por supuesto, en este módulo de routing se incluye a `LessonDetailResolver` dentro del epígrafe `providers:`.
+Se incluye `LessonDetailResolver` dentro del epígrafe `providers:` en este módulo de routing.
 
 ```typescript
 @Injectable()
@@ -216,21 +232,103 @@ export class LessonDetailResolver implements Resolve<LessonDetail> {
 }
 ```
 
-Y el componente que necesita el *Resolver*, `LessonDetailComponent` queda de modo que su propiedad `lessonSelected` se obtiene del router extrayendo la propiedad `lesson` cargada por el *Resolver*. 
+El componente necesitado del *Resolver*, `LessonDetailComponent` obtiene su propiedad `lessonSelected` del router.
 
 ```typescript
 @Component({ . . . })
 export class LessonDetailComponent implements OnInit {
-  lessonSelected: LessonDetail;
+  lessonSelected$: Observable<LessonDetail>;
 
-  constructor(private route: ActivatedRoute) {
-    console.log("Created LessonDetailComponent...");
-  }
+  constructor(private route: ActivatedRoute) { }
 
   ngOnInit() {
-    this.lessonSelected = this.route.snapshot.data["lesson"];
+    this.lessonSelected$ = this.route.data.pipe(map(data => data["lesson"]));
   }
 }
+```
+
+En este momento se carga el detalle de la lección. 
+
+Y se presenta en el componente mediante el pipe `async` en el html.
+
+```html
+<div class="lesson-detail" *ngIf="(lessonSelected$ | async) as lesson">
+```
+
+
+Ahora añadiré navegación a elementos del HTML que aún no navegan: 
+* Vuelta al componente padre (del componente detalle de lección al componente curso)
+* Botón de lección anterior
+* Botón de lección siguiente
+
+
+De momento, el código HTML de estos tres elementos se ve así:
+```html
+<a class="back" href="javascript:void(0)">Back To Course</a>
+
+<div class="lesson-detail" *ngIf="(lessonSelected$ | async) as lesson">
+  . . .
+  <mat-icon class="nav-button" *ngIf="!lesson.first">
+      navigate_before
+  </mat-icon>
+  . . . 
+  <mat-icon class="nav-button" *ngIf="!lesson.last">
+      navigate_next
+  </mat-icon>
+```
+
+Empiezo con el elemento de vuelta al componente padre. 
+
+Un ejemplo de la navegación que quiero:
+* desde hijo: http://localhost:4200/courses/angular-router-course/lessons/2
+* hasta padre: http://localhost:4200/courses/angular-router-course
+
+Donde destaca el código `href="javascript:void(0)"` que sirve para que **el enlace no haga nada**.
+
+Aprovecho la estructura de la URL, dado que lo que quiero es subir dos escalones, uso la directiva `routerLink` y le asigno un `..` por cada vez que quiero subir un padre.
+```html
+<a class="back" 
+   href="javascript:void(0)" 
+   [routerLink]="[../..]">
+    Back To Course
+</a>
+```
+
+Las otras dos navegaciones (adelante, atrás) las arreglo programáticamente, sin usar la directiva `router-link`.
+Al pinchar los elementos (evento `click`), se lanzan sendos métodos `previous(lesson)` o `next(lesson)`.
+
+
+```html
+<div class="lesson-detail" *ngIf="(lesson$ | async) as lesson">
+  . . .
+  <mat-icon class="nav-button" *ngIf="!lesson.first" (click)="previous(lesson)">
+      navigate_before
+  </mat-icon>
+  . . .
+  <mat-icon ... (click)="next(lesson)"> 
+  . . . 
+</div>
+```
+
+Creo ambos métodos `previous(lesson)` y `next(lesson)` en el componente `LessonDetailComponent`. 
+
+En el constructor del componente inyecto el servicio `Router`, que permite forzar las navegaciones. 
+Navegaré con `this.router.navigate(...)`.
+
+Se sobreentiende una secuencia de lecciones consecutiva (+/-1).
+
+```javascript
+  constructor(private route: ActivatedRoute, private router: Router) { ... }
+  . .  .
+  previous(lesson: LessonDetail) {
+    const prevLesson = lesson.seqNo - 1;
+    this.router.navigate(['lessons', prevLesson], { relativeTo: this.route.parent });
+  }
+
+  next(lesson: LessonDetail) {
+    const nextLesson = lesson.seqNo + 1;
+    this.router.navigate(['lessons', nextLesson], { relativeTo: this.route.parent });
+  }
 ```
 
 

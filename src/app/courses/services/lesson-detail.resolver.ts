@@ -14,8 +14,6 @@ export class LessonDetailResolver implements Resolve<LessonDetail> {
     resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<LessonDetail> {
         const courseId = route.parent.paramMap.get("courseUrl"); 
         const lessonId = route.paramMap.get("lessonSeqNo");
-        console.log(courseId, lessonId);
-        const lessonDetail$: Observable<LessonDetail> = this.courses.loadLessonDetail(courseId, lessonId)
-        return lessonDetail$;
+        return this.courses.loadLessonDetail(courseId, lessonId);
     }
 }

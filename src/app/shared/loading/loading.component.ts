@@ -19,7 +19,7 @@ export class LoadingComponent implements OnInit {
   ngOnInit() {
     if (this.detectRoutingOngoing) {
       this.router.events.subscribe(event => { 
-        console.log('>>> Routing event triggered: ', event)
+        console.log('>>> (Control en el componente de spinner) Routing event triggered: \n', event)
         if (event instanceof NavigationStart || 
             event instanceof RouteConfigLoadStart ) {
           this.loadingService.loadingOn();
